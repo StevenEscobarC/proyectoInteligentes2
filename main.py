@@ -973,4 +973,4 @@ def predict():
         return jsonify({'error': 'Valor no encontrado.'}), 400     
 
 if __name__ == '__main__':
-    app.run(debug=False,port=9000)
+    app.run(debug=False,host='0.0.0.0', port=5000)
