@@ -130,7 +130,20 @@ def get_basics_statistics(registro_id):
 
             return jsonify({'message': 'Dataset obtenido exitosamente.', 'documento obtenido:': registro['documento'], 'basic_statistics': df_describe}), 200
         else:
-            return jsonify({'error': 'Registro no encontrado.'}), 404
+            registro_impu = coleccion_datos_imputados.find_one({'_id': object_id})
+            print(registro_impu)
+            if registro_impu:
+                 # Obtener el contenido del archivo en formato JSON
+                json_content = registro_impu['contenido']
+
+                df = pd.DataFrame(json_content)
+                
+
+                df_describe = df.describe().to_dict()
+
+                return jsonify({'message': 'Dataset imputado obtenido exitosamente.', 'documento obtenido:': registro_impu['documentoSinImputarCod'], 'basic_statistics': df_describe}), 200
+            else: 
+                return jsonify({'error': 'Registro no encontrado.'}), 404
 
     except Exception as e:
         print(e)
@@ -186,7 +199,6 @@ def columns(registro_id,number_type):
             imputacion = None
             #el tipo uno elimina datos faltantes y el tipo 2, reemplaza por la media los valors numericos y la moda por los categoricos
             if number_type=="1":
-                print('entra golodeli')
                 df=df.dropna()
                 imputacion = "Eliminacion de datos faltantes"
                 
@@ -549,107 +561,6 @@ def pca(dataset_id):
         print(e)
         return jsonify({'error': 'Ha ocurrido un error aplicando PCA.'}), 500
 ######################################################################################################
-
-# @app.route('/train/<dataset_id>/', methods=['POST'])
-# def train(dataset_id):
-#     try:
-#         # Convertir el ID del registro a ObjectId de MongoDB
-#         #object_id = ObjectId(dataset_id)
-        
-#         # Buscar el registro por ID
-#         registro = coleccion_datos_imputados.find_one({'documentoSinImputarCod': dataset_id})
-        
-
-#         if registro:
-#             # Obtener el contenido del archivo en formato JSON
-#             json_content = registro['contenido']
-
-#             # Convertir el JSON a un DataFrame de Pandas
-#             global df
-
-#             df = pd.DataFrame(json_content)
-#             body = request.get_json()
-
-#             # Aquí deberías cargar tu dataset. Asumo que ya tienes 'df' cargado de alguna manera.
-#             # Puedes ajustar esto según la estructura real de tu código.
-#             # x = df[body['x']]
-#             # y = df[body['y']]
-#             print(df.columns)
-#             for columna in df.columns:
-#                 if df[columna].dtypes == 'object' or df[columna].dtypes == 'bool':
-#                     labelencoder_x = LabelEncoder()
-#                     df[columna] =  labelencoder_x.fit_transform(df[columna])
-#             x = df.drop('class', axis=1)  # Elimina 'class' del eje de las columnas (axis=1)
-#             y = df['class']  # Variable objetivo
-            
-
-#             normalization = body['normalization']
-#             option_train = body['option_train']
-#             algorithms = body['algorithms']
-
-#             X_train, X_test, y_train, y_test = [], [], [], []
-
-#             if option_train == 1:  # Hold out
-#                 X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=101)
-#             elif option_train == 2:  # Cross Validation
-#                 X_train, X_test, y_train, y_test = x, x, y, y
-
-#             if normalization == 1:  # MinMax
-#                 scaler = MinMaxScaler()
-#                 X_train = scaler.fit_transform(X_train)
-#                 X_test = scaler.transform(X_test)
-#             elif normalization == 2:  # Standard Scaler
-#                 scaler = StandardScaler()
-#                 X_train = scaler.fit_transform(X_train)
-#                 X_test = scaler.transform(X_test)
-
-#             # Aquí deberías realizar un bucle para iterar sobre los algoritmos seleccionados y entrenar cada uno.
-
-#             for algorithm_id in algorithms:
-#                 model = ControladorModelo().entrenar(algorithm_id)
-#                 model.fit(X_train, y_train)
-#                 y_pred = model.predict(X_test)
-
-#                 route = f"Models/{dataset_id}_{algorithm_id}.pkl"
-#                 joblib.dump(model, route)
-
-#                 acc = accuracy_score(y_pred, y_test)
-#                 pre = precision_score(y_pred, y_test, average='macro')
-#                 rec = recall_score(y_pred, y_test, average='micro')
-#                 f1 = f1_score(y_pred, y_test, average='weighted')
-
-#                 if option_train == 2:  # Cross Validation
-#                     acc = cross_val_score(model, x, y, cv=5, scoring='accuracy').mean()
-#                     pre = cross_val_score(model, x, y, cv=5, scoring='precision_macro').mean()
-#                     rec = cross_val_score(model, x, y, cv=5, scoring='recall_macro').mean()
-#                     f1 = cross_val_score(model, x, y, cv=5, scoring='f1_macro').mean()
-
-#                 average = (acc + pre + rec + f1) / 4
-
-#                 task = {
-#                     "accuracy": acc,
-#                     "precision": pre,
-#                     "recall": rec,
-#                     "f1": f1,
-#                     "route": route,
-#                     "x": body['x'],
-#                     "y": body['y'],
-#                     "normalization": normalization,
-#                     "option_train": option_train,
-#                     "dataset_id": dataset_id,
-#                     "average": average,
-#                     "algorithm_id": algorithm_id,
-#                 }
-
-#                 coleccion_modelos.insert_one(task)
-
-#         return jsonify({'message': 'Entrenamiento exitoso.', 'routes': [route for _ in algorithms]}), 200
-
-#     except AttributeError:
-#         return jsonify({'error': 'No se ha cargado ningún archivo.'}), 400
-#     except Exception as e:
-#         print(e)
-#         return jsonify({'error': 'Ha ocurrido un error.'}), 400
     
 @app.route('/train/<dataset_id>/', methods=['POST'])
 def train(dataset_id):
@@ -778,6 +689,61 @@ def train(dataset_id):
     except Exception as e:
         print(e)
         return jsonify({'error': 'Ha ocurrido un error.'}), 400
+    
+@app.route('/results/<train_id>/', methods=['GET'])
+def get_model_metrics(train_id):
+    try:
+        # Convertir el ID del registro a ObjectId de MongoDB
+        object_id = ObjectId(train_id)
+
+        # Buscar el registro por ID
+        registro = coleccion_entrenamientos.find_one({'_id': object_id})
+
+        if registro:
+            # Buscar modelos entrenados para el conjunto de datos específico
+            modelos_entrenados = registro['datosEntrenamiento']
+
+            # Preparar la respuesta JSON con las métricas de cada modelo
+            metrics_list = []
+            for modelo_entrenado in modelos_entrenados:
+                metrics = {
+                    'accuracy': modelo_entrenado['accuracy'],
+                    'precision': modelo_entrenado['precision'],
+                    'recall': modelo_entrenado['recall'],
+                    'f1 score': modelo_entrenado['f1'],
+                    'Modelo': modelo_entrenado['route'],
+                }
+                metrics_list.append(metrics)
+
+            return jsonify({'metrics': metrics_list}), 200
+        else: 
+            return jsonify({'error': 'Registro no encontrado.'}), 404
+
+    except Exception as e:
+        print(e)
+        return jsonify({'error': 'Ha ocurrido un error al obtener las métricas de los modelos.'}), 500
+# def results(train_id):
+#     try:
+#         # Convertir el ID del registro a ObjectId de MongoDB
+#         # object_id = ObjectId(train_id)
+
+#         # Buscar el registro por ID
+#         registro = coleccion_entrenamientos.find_one({'_id': train_id})
+
+#         if registro:
+#             # Obtener el contenido del archivo en formato JSON
+#             json_content = registro['datosEntrenamiento']
+
+#             # Convertir el JSON a un DataFrame de Pandas
+#             df = pd.DataFrame(json_content)
+
+#             return jsonify({'message': 'Entrenamiento exitoso.', 'datosEntrenamiento': df}), 200
+
+#         return jsonify({'error': 'No se ha cargado ningún archivo.'}), 400
+
+#     except Exception as e:
+#         print(e)
+#         return jsonify({'error': 'Ha ocurrido un error.'}), 400
     
 @app.route('/graficar', methods=['POST'])
 def graficar():
@@ -973,4 +939,5 @@ def predict():
         return jsonify({'error': 'Valor no encontrado.'}), 400     
 
 if __name__ == '__main__':
-    app.run(debug=False,host='0.0.0.0', port=5000)
+    #app.run(debug=False,host='0.0.0.0', port=5000) #-> para EC2
+    app.run(debug=False,host='0.0.0.0', port=9000)
