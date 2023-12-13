@@ -772,7 +772,7 @@ def get_model_metrics(train_id):
                     'precision': modelo_entrenado['precision'],
                     'recall': modelo_entrenado['recall'],
                     'f1 score': modelo_entrenado['f1'],
-                    'confusion_matrix': conf_mat.tolist(),  # Convertir la matriz a una lista para JSON
+                    'confusion_matrix': str(conf_mat),  # Convertir la matriz a una lista para JSON
                     'Modelo': modelo_entrenado['route'],
                 }
                 metrics_list.append(metrics)
