@@ -673,6 +673,7 @@ def train(dataset_id):
                     #"average": average,
                     "algorithm_id": algorithm_id,
                     "modelo": nombre,
+                    "y_pred": y_pred,
                 }
                 tasks.append(task)
 
