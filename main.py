@@ -610,7 +610,7 @@ def train(dataset_id):
             option_train = body['option_train']
             algorithms = body['algorithms']
 
-            
+            global X_train, X_test, y_train, y_test
 
             if option_train == 1:  # Hold out
                 X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=101)
@@ -635,7 +635,10 @@ def train(dataset_id):
             for algorithm_id in algorithms:
                 nombre, model = ControladorModelo().entrenar(algorithm_id)
                 model.fit(X_train, y_train)
+                global y_pred
+                
                 y_pred = model.predict(X_test)
+                print(y_pred)
                 nombres_algoritmos.append(nombre)
 
                 # Modificar la variable 'route' para incluir el nombre del modelo en el nombre del archivo
@@ -726,14 +729,31 @@ def get_model_metrics(train_id):
                 #loaded_model = keras.models.load_model(modelo_entrenado['route'])
                 print(modelo_entrenado['route'])
                 # loaded_model = joblib.load(modelo_entrenado['route'])
-
                 # Predecir en datos de prueba
+                # loaded_y_pred = y_pred
+                # print(loaded_y_pred)
+                # loaded_y_pred_classes = np.argmax(loaded_y_pred, axis=1)
+                # loaded_y_true_classes = np.argmax(y_test, axis=0)
+
+                # # Calcular métricas por separado
+                # accuracy = accuracy_score(loaded_y_true_classes, loaded_y_pred_classes)
+                # precision = precision_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
+                # recall = recall_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
+                # f1 = f1_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
+
+                # print(f'Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1 Score: {f1}')
+
+                # # Obtener la matriz de confusión
+                # conf_mat = confusion_matrix(loaded_y_true_classes, loaded_y_pred_classes)
+
+                # print(conf_mat)
                 loaded_y_pred = y_pred
                 print(loaded_y_pred)
-                loaded_y_pred_classes = np.argmax(loaded_y_pred, axis=1)
-                loaded_y_true_classes = np.argmax(y_test, axis=0)
 
-                # Calcular métricas por separado
+                loaded_y_pred_classes = np.round(loaded_y_pred).astype(int)
+                loaded_y_true_classes = np.round(y_test).astype(int)
+
+                # Calcular métricas
                 accuracy = accuracy_score(loaded_y_true_classes, loaded_y_pred_classes)
                 precision = precision_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
                 recall = recall_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
@@ -746,12 +766,13 @@ def get_model_metrics(train_id):
 
                 print(conf_mat)
 
+
                 metrics = {
                     'accuracy': modelo_entrenado['accuracy'],
                     'precision': modelo_entrenado['precision'],
                     'recall': modelo_entrenado['recall'],
                     'f1 score': modelo_entrenado['f1'],
-                    #'confusion_matrix': conf_mat.tolist(),  # Convertir la matriz a una lista para JSON
+                    'confusion_matrix': conf_mat.tolist(),  # Convertir la matriz a una lista para JSON
                     'Modelo': modelo_entrenado['route'],
                 }
                 metrics_list.append(metrics)
