@@ -19,7 +19,8 @@ from sklearn.model_selection import cross_val_score
 from flask_cors import CORS
 import seaborn as sns
 from sklearn.decomposition import PCA
-from keras.models import load_model
+#from keras.models import load_model
+#from tensorflow import keras
         
 app = Flask(__name__)
 
@@ -37,6 +38,7 @@ coleccion_entrenamientos = database["Entrenamientos"]
 df = "" 
 filename = ""
 X_train, X_test, y_train, y_test = [], [], [], []
+y_pred = []
 
 @app.route('/load', methods=['POST'])
 def load_file():
@@ -680,6 +682,15 @@ def train(dataset_id):
                 route_con_id = f"Models/{dataset_id}_{nombre}_model_{id_insertado}.pkl"
                 os.rename(route, route_con_id)
                 routes[-1] = route_con_id  # Actualizar la última ruta en la lista
+                #task['route'] = route_con_id  # Actualizar la ruta en el diccionario
+
+
+                # Actualizar el documento en la colección con la nueva ruta que incluye el ID
+                coleccion_modelos.update_one(
+                    {"_id": result.inserted_id},
+                    {"$set": {"route": route_con_id}}
+                )
+                task['route'] = route_con_id  # Actualizar la ruta en el diccionario
 
             result = coleccion_entrenamientos.insert_one({'dataset_id': dataset_id, 'datosEntrenamiento': tasks})
             id_insertado_entrenamiento = str(result.inserted_id)
@@ -712,12 +723,15 @@ def get_model_metrics(train_id):
                 # Calcular la matriz de confusión
                 # Cargar el modelo desde el archivo guardado
                 
-                loaded_model = load_model(modelo_entrenado['route'])
+                #loaded_model = keras.models.load_model(modelo_entrenado['route'])
+                print(modelo_entrenado['route'])
+                # loaded_model = joblib.load(modelo_entrenado['route'])
 
                 # Predecir en datos de prueba
-                loaded_y_pred = loaded_model.predict(X_train)
+                loaded_y_pred = y_pred
+                print(loaded_y_pred)
                 loaded_y_pred_classes = np.argmax(loaded_y_pred, axis=1)
-                loaded_y_true_classes = np.argmax(y_test, axis=1)
+                loaded_y_true_classes = np.argmax(y_test, axis=0)
 
                 # Calcular métricas por separado
                 accuracy = accuracy_score(loaded_y_true_classes, loaded_y_pred_classes)
@@ -737,7 +751,7 @@ def get_model_metrics(train_id):
                     'precision': modelo_entrenado['precision'],
                     'recall': modelo_entrenado['recall'],
                     'f1 score': modelo_entrenado['f1'],
-                    'confusion_matrix': conf_mat.tolist(),  # Convertir la matriz a una lista para JSON
+                    #'confusion_matrix': conf_mat.tolist(),  # Convertir la matriz a una lista para JSON
                     'Modelo': modelo_entrenado['route'],
                 }
                 metrics_list.append(metrics)
@@ -966,5 +980,5 @@ def predict():
         return jsonify({'error': 'Valor no encontrado.'}), 400     
 
 if __name__ == '__main__':
-    #app.run(debug=False,host='0.0.0.0', port=5000) #-> para EC2
-    app.run(debug=False,host='0.0.0.0', port=9000)
+    app.run(debug=False,host='0.0.0.0', port=5000) #-> para EC2
+    #app.run(debug=False,host='0.0.0.0', port=9000)
