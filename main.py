@@ -2,6 +2,8 @@ from bson import ObjectId
 from flask import Flask, request, jsonify
 import os
 from datetime import datetime
+
+import numpy as np
 from Controladores.ControladorModelo import ControladorModelo
 import json
 import pandas as pd
@@ -17,7 +19,7 @@ from sklearn.model_selection import cross_val_score
 from flask_cors import CORS
 import seaborn as sns
 from sklearn.decomposition import PCA
-
+from keras.models import load_model
         
 app = Flask(__name__)
 
@@ -34,6 +36,7 @@ coleccion_datos_PCA = database["DataPCA"]
 coleccion_entrenamientos = database["Entrenamientos"]
 df = "" 
 filename = ""
+X_train, X_test, y_train, y_test = [], [], [], []
 
 @app.route('/load', methods=['POST'])
 def load_file():
@@ -605,7 +608,7 @@ def train(dataset_id):
             option_train = body['option_train']
             algorithms = body['algorithms']
 
-            X_train, X_test, y_train, y_test = [], [], [], []
+            
 
             if option_train == 1:  # Hold out
                 X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=101)
@@ -706,11 +709,35 @@ def get_model_metrics(train_id):
             # Preparar la respuesta JSON con las métricas de cada modelo
             metrics_list = []
             for modelo_entrenado in modelos_entrenados:
+                # Calcular la matriz de confusión
+                # Cargar el modelo desde el archivo guardado
+                
+                loaded_model = load_model(modelo_entrenado['route'])
+
+                # Predecir en datos de prueba
+                loaded_y_pred = loaded_model.predict(X_train)
+                loaded_y_pred_classes = np.argmax(loaded_y_pred, axis=1)
+                loaded_y_true_classes = np.argmax(y_test, axis=1)
+
+                # Calcular métricas por separado
+                accuracy = accuracy_score(loaded_y_true_classes, loaded_y_pred_classes)
+                precision = precision_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
+                recall = recall_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
+                f1 = f1_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
+
+                print(f'Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1 Score: {f1}')
+
+                # Obtener la matriz de confusión
+                conf_mat = confusion_matrix(loaded_y_true_classes, loaded_y_pred_classes)
+
+                print(conf_mat)
+
                 metrics = {
                     'accuracy': modelo_entrenado['accuracy'],
                     'precision': modelo_entrenado['precision'],
                     'recall': modelo_entrenado['recall'],
                     'f1 score': modelo_entrenado['f1'],
+                    'confusion_matrix': conf_mat.tolist(),  # Convertir la matriz a una lista para JSON
                     'Modelo': modelo_entrenado['route'],
                 }
                 metrics_list.append(metrics)
