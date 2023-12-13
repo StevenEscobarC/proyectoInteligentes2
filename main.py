@@ -19,8 +19,6 @@ from sklearn.model_selection import cross_val_score
 from flask_cors import CORS
 import seaborn as sns
 from sklearn.decomposition import PCA
-#from keras.models import load_model
-#from tensorflow import keras
         
 app = Flask(__name__)
 
@@ -96,21 +94,7 @@ def load_file():
     else:
         return jsonify({'error': 'No se recibió ningún archivo.'}), 400
     
-# @app.route('/basics_statistics/<dataset_id>', methods=['GET'])
-# def basics_statistics(dataset_id):
-#     try:
-#         object_id = ObjectId(dataset_id)
-#         resultados = coleccion_datos.find({ '_id': object_id })
-#         lista_resultados = []
-#         for documento in resultados:
-#             documento = convertir_a_cadena(documento)
-#             lista_resultados.append(documento['contenido'])
-#         json_resultados = json.dumps(lista_resultados)
-#         return json_resultados, 200
-#     except AttributeError:
-#         return jsonify({'error': 'No se ha encontrado el dataset.'}), 400
-#     except Exception:
-#         return jsonify({'error': 'Ha ocurrido un error encontrando el dataset.'}), 400
+
     
 @app.route('/basics_statistics/<registro_id>', methods=['GET'])
 def get_basics_statistics(registro_id):
@@ -208,11 +192,6 @@ def columns(registro_id,number_type):
                 imputacion = "Eliminacion de datos faltantes"
                 
             elif number_type=="2":
-                
-                # df=df.fillna(df.mean())
-                # df=df.fillna(df.mode().iloc[0])
-                # imputacion = "Reemplazo por la media y la moda"
-                # Identify numeric and categorical columns
                 numeric_cols = df.select_dtypes(include=['number']).columns
                 categorical_cols = df.select_dtypes(include=['object']).columns
 
@@ -236,9 +215,6 @@ def columns(registro_id,number_type):
 @app.route('/general_univariate_graphs/<dataset_id>', methods=['POST'])
 def general_univariate_graphs(dataset_id):
     try:
-        # Convertir el ID del registro a ObjectId de MongoDB
-        #object_id = ObjectId(dataset_id)
-        
         # Buscar el registro por ID
         registro = coleccion_datos_imputados.find_one({'documentoSinImputarCod': dataset_id})
 
@@ -673,7 +649,7 @@ def train(dataset_id):
                     #"average": average,
                     "algorithm_id": algorithm_id,
                     "modelo": nombre,
-                    "y_pred": y_pred,
+                    "y_pred": y_pred.tolist(),
                 }
                 tasks.append(task)
 
@@ -724,32 +700,9 @@ def get_model_metrics(train_id):
             # Preparar la respuesta JSON con las métricas de cada modelo
             metrics_list = []
             for modelo_entrenado in modelos_entrenados:
-                # Calcular la matriz de confusión
-                # Cargar el modelo desde el archivo guardado
+               
                 
-                #loaded_model = keras.models.load_model(modelo_entrenado['route'])
-                print(modelo_entrenado['route'])
-                # loaded_model = joblib.load(modelo_entrenado['route'])
-                # Predecir en datos de prueba
-                # loaded_y_pred = y_pred
-                # print(loaded_y_pred)
-                # loaded_y_pred_classes = np.argmax(loaded_y_pred, axis=1)
-                # loaded_y_true_classes = np.argmax(y_test, axis=0)
-
-                # # Calcular métricas por separado
-                # accuracy = accuracy_score(loaded_y_true_classes, loaded_y_pred_classes)
-                # precision = precision_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
-                # recall = recall_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
-                # f1 = f1_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
-
-                # print(f'Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1 Score: {f1}')
-
-                # # Obtener la matriz de confusión
-                # conf_mat = confusion_matrix(loaded_y_true_classes, loaded_y_pred_classes)
-
-                # print(conf_mat)
-                loaded_y_pred = y_pred
-                print(loaded_y_pred)
+                loaded_y_pred = modelo_entrenado['y_pred']
 
                 loaded_y_pred_classes = np.round(loaded_y_pred).astype(int)
                 loaded_y_true_classes = np.round(y_test).astype(int)
@@ -760,12 +713,10 @@ def get_model_metrics(train_id):
                 recall = recall_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
                 f1 = f1_score(loaded_y_true_classes, loaded_y_pred_classes, average='weighted')
 
-                print(f'Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1 Score: {f1}')
 
                 # Obtener la matriz de confusión
                 conf_mat = confusion_matrix(loaded_y_true_classes, loaded_y_pred_classes)
 
-                print(conf_mat)
 
 
                 metrics = {
@@ -785,119 +736,8 @@ def get_model_metrics(train_id):
     except Exception as e:
         print(e)
         return jsonify({'error': 'Ha ocurrido un error al obtener las métricas de los modelos.'}), 500
-# def results(train_id):
-#     try:
-#         # Convertir el ID del registro a ObjectId de MongoDB
-#         # object_id = ObjectId(train_id)
 
-#         # Buscar el registro por ID
-#         registro = coleccion_entrenamientos.find_one({'_id': train_id})
-
-#         if registro:
-#             # Obtener el contenido del archivo en formato JSON
-#             json_content = registro['datosEntrenamiento']
-
-#             # Convertir el JSON a un DataFrame de Pandas
-#             df = pd.DataFrame(json_content)
-
-#             return jsonify({'message': 'Entrenamiento exitoso.', 'datosEntrenamiento': df}), 200
-
-#         return jsonify({'error': 'No se ha cargado ningún archivo.'}), 400
-
-#     except Exception as e:
-#         print(e)
-#         return jsonify({'error': 'Ha ocurrido un error.'}), 400
-    
-@app.route('/graficar', methods=['POST'])
-def graficar():
-    try:
-        df_numeric = df.select_dtypes(include='number')
-        plt.rcParams['figure.figsize'] = (16, 9)
-        plt.style.use('ggplot')
-        df_numeric.hist()
-        filenameH = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + '_' + 'histograma.png'
-        plt.savefig('Imagenes/histogramas/' + filenameH)
-
-        colormap = plt.cm.coolwarm
-        plt.figure(figsize=(12,12))
-        plt.title('Chronic_Kidney_Disease Data Set', y=1.05, size=15)
-        sb.heatmap(df_numeric.astype(float).corr(),linewidths=0.1,vmax=1.0, square=True, cmap=colormap, linecolor='white', annot=True)
-        filenameC = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + '_' + 'correlacion.png'
-        plt.savefig('Imagenes/correlacion/' + filenameC)
-        return jsonify({'histograma': 'Imagenes/histogramas/' + filenameH,
-                        'correlacion':'Imagenes/correlacion/' + filenameC}), 200
-    except AttributeError :
-        return jsonify({'error': 'No se ha cargado ningún archivo.'}), 400
-    except Exception:
-        return jsonify({'error': 'Ha ocurrido un error.'}), 400
-
-# @app.route('/entrenar', methods=['POST'])
-# def train():
-#     try:
-#         body = request.get_json()
-#         x = df[body['x']]
-#         y = df[body['y']]
-#         normalizacion = body['normalizacion']
-#         tecnica = body['tecnica']
-#         numero = body['numero']
-#         X_train, X_test, y_train, y_test = [], [], [], []
-#         if tecnica == 'hold':
-#             X_train, X_test, y_train, y_test = train_test_split(x, y, test_size = numero/100, random_state = 101)
-#         elif tecnica == 'cross':
-#             X_train, X_test, y_train, y_test = train_test_split(x, y, test_size = 1/numero, random_state = 101)
-
-#         if normalizacion == 'standard':
-#             sc_X = StandardScaler()
-#             X_train = sc_X.fit_transform(X_train)
-#             X_test = sc_X.transform(X_test)
-#         elif normalizacion == 'minmax':
-#             escalar=MinMaxScaler()
-#             X_train=escalar.fit_transform(X_train)
-#             X_test=escalar.transform(X_test)
-
-#         modelo = ControladorModelo().entrenar(body['modelo'])
-#         modelo.fit(X_train, y_train)
-#         y_pred = modelo.predict(X_test)
-
-#         ruta = "Models/"+ filename.split(".")[0]+"_" + body['modelo']+".pkl"
-#         joblib.dump(modelo, ruta)
-#         acc = accuracy_score(y_pred, y_test)
-#         pre = precision_score(y_pred, y_test, average='macro')
-#         rec = recall_score(y_pred, y_test, average='micro')
-#         f1 = f1_score(y_pred, y_test, average='weighted')
-#         if tecnica == 'cross':
-#             acc = cross_val_score(modelo, x, y, cv=numero,scoring='accuracy') 
-#             acc = acc.mean()
-#             pre = cross_val_score(modelo, x, y, cv=numero,scoring='precision_macro')
-#             pre = pre.mean()
-#             rec = cross_val_score(modelo, x, y, cv=numero,scoring='recall_macro')
-#             rec = rec.mean()
-#             f1 = cross_val_score(modelo, x, y, cv=numero,scoring='f1_macro')
-#             f1 = f1.mean()
-#         promedio = (acc + pre + rec + f1)/4
-#         print(acc, pre, rec, f1)
-#         task = {"accuracy": acc, 
-#                 "precision": pre, 
-#                 "recall": rec,
-#                 "f1": f1,
-#                 "ruta": ruta, 
-#                 "x": body['x'], 
-#                 "y": body['y'], 
-#                 "normalizacion": normalizacion, 
-#                 "tecnica": tecnica,
-#                 "numero": numero, 
-#                 "nombre": filename,
-#                 "promedio": promedio,
-#                 "modelo": body['modelo'],
-#                 }
-#         myMoldel.insert_one(task)
-        
-#         return jsonify({'message': 'Entrenamiento exitoso.', 'nombre' : ruta}), 200
-#     except AttributeError :
-#         return jsonify({'error': 'No se ha cargado ningún archivo.'}), 400
-#     except Exception as e:
-#         print(e)
-#         return jsonify({'error': 'Ha ocurrido un error.'}), 400
+   
     
 
     
@@ -905,102 +745,75 @@ def convertir_a_cadena(documento):
     documento['_id'] = str(documento['_id'])
     return documento
 
-@app.route('/listar', methods=['POST'])
-def listar():
-    body = request.get_json()
-    nombre = body['nombre']
-    
-    resultados = coleccion_modelos.find({ 'nombre': nombre })
-    lista_resultados = []
-    for documento in resultados:
-        documento = convertir_a_cadena(documento)
-        lista_resultados.append(documento['modelo'])
 
-    json_resultados = json.dumps(lista_resultados)
-
-    return  json_resultados, 200
-
-@app.route('/metricas', methods=['POST'])
-def metricas():
-    body = request.get_json()
-    nombre = body['nombre']
-    
-    resultados = coleccion_modelos.find({ 'nombre': nombre })
-    lista_resultados = []
-    for documento in resultados:
-        documento = convertir_a_cadena(documento)
-        lista_resultados.append(documento)
-
-    json_resultados = json.dumps(lista_resultados)
-
-    return  json_resultados, 200
-
-@app.route('/mejores', methods=['POST'])
-def mejores():
-    body = request.get_json()
-    nombre = body['nombre']
-    
-    resultados = coleccion_modelos.find({ 'nombre': nombre }).sort('promedio', -1).limit(3)
-    lista_resultados = {}
-    i=1
-    for documento in resultados:
-        documento = convertir_a_cadena(documento)
-        
-        lista_resultados['TOP'+str(i)] = documento
-        i+=1
-        
-    json_resultados = json.dumps(lista_resultados)
-
-    return  json_resultados, 200
-
-@app.route('/predecir', methods=['POST'])
-def predict():
+@app.route('/prediction/<train_id>/', methods=['GET'])
+def predict(train_id):
     try:
-        body = request.get_json() 
-        modelo = body['modelo']
-        documento= body['documento']
-        prediccion = body['prediccion']
-        clf_rf = joblib.load('Models/'+modelo+'.pkl')
+        object_id = ObjectId(train_id)
 
-        doc = coleccion_codigos.find({ 'documento': documento })
-        aux={}
-        for documento in doc:
-            documento = convertir_a_cadena(documento)
-            aux=documento['codigos']
-        datos=[]
-        y=[]
-        # se decodifican los datos
-        for titulo in prediccion.keys(): 
-            try:
-                valor=prediccion[titulo]
-                arr=aux[titulo]
-                for auxdicc in arr:
-                        if auxdicc['valorOg']==valor:
-                            datos.append(auxdicc['valorCod'])
-                            break
-            except KeyError:
-                datos.append(prediccion[titulo]) # para los datos numericos
-        # se encuentra la columna objetivo
-        for titulo in aux.keys():
-            try:
-                valor=prediccion[titulo]
-                arr=aux[titulo]
-            except:
-                y=aux[titulo]
+        # Buscar el registro por ID
+        registro = coleccion_entrenamientos.find_one({'_id': object_id})
+
+        if registro:
+            # Buscar modelos entrenados para el conjunto de datos específico
+            modelos_entrenados = registro['datosEntrenamiento']
+            body = request.get_json() 
+
+            mejor_score = 0
+            mejor_nombre = ""
+            # Preparar la respuesta JSON con las métricas de cada modelo
+            for modelo_entrenado in modelos_entrenados:
+                if(mejor_score < modelo_entrenado['f1']):
+                    mejor_score = modelo_entrenado['f1']
+                    mejor_nombre = modelo_entrenado['route']
+               
+            print(mejor_nombre)
+            print(mejor_score)
+
+            documento= body['documento']
+            prediccion = body['prediccion']
+            clf_rf = joblib.load(mejor_nombre)
+
+            doc = coleccion_codigos.find({ 'documento': documento })
+            aux={}
+            for documento in doc:
+                documento = convertir_a_cadena(documento)
+                aux=documento['codigos']
+            datos=[]
+            y=[]
+            # se decodifican los datos
+            for titulo in prediccion.keys(): 
+                try:
+                    valor=prediccion[titulo]
+                    arr=aux[titulo]
+                    for auxdicc in arr:
+                            if auxdicc['valorOg']==valor:
+                                datos.append(auxdicc['valorCod'])
+                                break
+                except KeyError:
+                    datos.append(prediccion[titulo]) # para los datos numericos
+
+            # se encuentra la columna objetivo
+            for titulo in aux.keys():
+                try:
+                    valor=prediccion[titulo]
+                    arr=aux[titulo]
+                except:
+                    y=aux[titulo]
 
 
-        resultado_prediccion = clf_rf.predict([datos])
-        # se decodifica el resultado
-        for res in y:
-            if res['valorCod']==resultado_prediccion.tolist()[0]:
-                resultado_prediccion=res['valorOg']
-                break
+            resultado_prediccion = clf_rf.predict([datos])
+            # se decodifica el resultado
+            for res in y:
+                if res['valorCod']==resultado_prediccion.tolist()[0]:
+                    resultado_prediccion=res['valorOg']
+                    break
 
-        return jsonify({'prediction': resultado_prediccion}), 200
+            return jsonify({'prediction': resultado_prediccion}), 200
     except ValueError as e :
         print(e)
         return jsonify({'error': 'Valor no encontrado.'}), 400     
 
 if __name__ == '__main__':
-    app.run(debug=False,host='0.0.0.0', port=5000) #-> para EC2
-    #app.run(debug=False,host='0.0.0.0', port=9000)
+    #app.run(debug=False,host='0.0.0.0', port=5000) #-> para EC2
+    app.run(debug=False,host='0.0.0.0', port=9000)
